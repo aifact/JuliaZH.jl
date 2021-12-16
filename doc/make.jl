@@ -110,9 +110,6 @@ const PAGES = [
         "manual/missing.md",
         "manual/networking-and-streams.md",
         "manual/parallel-computing.md",
-        "manual/asynchronous-programming.md",
-        "manual/multi-threading.md",
-        "manual/distributed-computing.md",
         "manual/running-external-programs.md",
         "manual/calling-c-and-fortran-code.md",
         "manual/handling-operating-system-variation.md",
@@ -127,7 +124,6 @@ const PAGES = [
         "manual/faq.md",
         "manual/noteworthy-differences.md",
         "manual/unicode-input.md",
-        "manual/command-line-options.md",
     ],
     "Base" => [
         "base/base.md",
@@ -174,15 +170,12 @@ const PAGES = [
             "devdocs/offset-arrays.md",
             "devdocs/require.md",
             "devdocs/inference.md",
-            "devdocs/ssair.md",
-            "devdocs/gc-sa.md",
         ],
         "Developing/debugging Julia's C code" => [
             "devdocs/backtraces.md",
             "devdocs/debuggingtips.md",
             "devdocs/valgrind.md",
             "devdocs/sanitizers.md",
-            # "devdocs/probes.md" # seems not synced from transifix
         ],
     ],
 ]
@@ -207,7 +200,6 @@ else
             "assets/julia-manual.css"
         ],
         lang = "zh-cn",
-        footer = "📢📢📢Julia中文社区将于2021年12月10日至12日之间举办线上会议，抢先预览[会议日程](https://discourse.juliacn.com/t/topic/5717)！"
     )
 end
 

@@ -24,3 +24,5 @@ _*.dat
 *.swp
 __pycache__/
 Manifest.toml
+.idea
+.github

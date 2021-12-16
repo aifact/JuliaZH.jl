@@ -27,7 +27,6 @@ Base.schedule
 ## [Synchronization](@id lib-task-sync)
 
 ```@docs
-Base.errormonitor
 Base.@sync
 Base.wait
 Base.fetch(t::Task)

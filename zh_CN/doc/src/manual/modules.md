@@ -1,21 +1,78 @@
 # [模块](@id modules)
 
-Julia 中的模块有助于将代码组织成连贯的部分。 它们在语法上以 `module Name ... end` 界定，并具有以下特点：
+Julia 中的模块（module）是一些互相隔离的可变工作空间，也就是说它们会引入新的全局作用域。它们在语法上以 `module Name ... end` 界定。模块允许你创建顶层定义（也称为全局变量），而无需担心命名冲突。在模块中，利用导入（importing），你可以控制其它模块中的哪些名称是可见的；利用导出（exporting），你可以控制你自己的模块中的哪些名称是公开的。
 
-1. 模块是独立的命名空间，每个都引入了一个新的全局作用域。 这很有用，因为它允许对不同的函数或全局变量使用相同的名称而不会发生冲突，只要它们在不同的模块中即可。
-    
-
-2. 模块具有用于命名空间管理的工具：每个模块定义一组它`export`的名称，并且可以使用 `using` 和 `import` 从其他模块导入名称（我们将在下面解释这些）。
-    
-
-3. 模块可以预编译以加快加载速度，并包含用于运行时初始化的代码。
-
-通常，在较大的 Julia 包中，你会看到模块的代码组织成文件，例如
+下面的示例演示了模块的主要功能。它不是为了运行，只是为了方便说明：
 
 ```julia
-module SomeModule
+module MyModule
+using Lib
 
-# export, using, import statements are usually here; we discuss these below
+using BigLib: thing1, thing2
+
+import Base.show
+
+export MyType, foo
+
+struct MyType
+    x
+end
+
+bar(x) = 2x
+foo(a::MyType) = bar(a.x) + 1
+
+show(io::IO, a::MyType) = print(io, "MyType $(a.x)")
+end
+```
+
+注意，模块中的代码样式不需要缩进，否则的话，会导致整个文件缩进。
+
+上面的模块定义了一个 `MyType` 类型，以及两个函数，其中，函数 `foo` 和类型 `MyType` 被导出了，因而可以被导入到其它模块，而函数 `bar` 是模块 `MyModule` 的私有函数。
+
+`using Lib` 意味着一个名称为 `Lib` 的模块会在需要的时候用于解释变量名。当一个全局变量在当前模块中没有定义时，系统就会从 `Lib` 中导出的变量中搜索该变量，如果找到了的话，就导入进来。也就是说，当前模块中，所有使用该全局变量的地方都会解释为 `Lib` 中对应的变量。
+
+代码 `using BigLib: thing1, thing2` 显式地将标识符 `thing1` 和 `thing2` 从模块 `BigLib` 中引入到当前作用域。如果这两个变量是函数的话，则**不允许**给它们增加新的方法，毕竟代码里写的是 "using"（使用）它们，而不是扩展它们。
+
+[`import`](@ref) 关键字所支持的语法与 [`using`](@ref) 一致。
+它并不会像 `using` 那样将模块添加到搜索空间中。
+与 `using` 不同，`import` 引入的函数 **可以** 为其增加新的方法。
+
+前面的 `MyModule` 模块中，我们希望给 [`show`](@ref) 函数增加一个方法，需要写成 `import Base.show`。如果用 `using` 的话，就不能扩展 `show` 函数。通过 `using` 导入才可见的名字是不能被扩展的。
+
+一旦一个变量通过 `using` 或 `import` 引入，当前模块就不能创建同名的变量了。而且导入的变量是只读的，给全局变量赋值只能影响到由当前模块拥有的变量，否则会报错。
+
+## 模块用法摘要
+
+要导入一个模块，可以用 `using` 或 `import` 关键字。为了更好地理解它们的区别，请参考下面的例子：
+
+```julia
+module MyModule
+
+export x, y
+
+x() = "x"
+y() = "y"
+p() = "p"
+
+end
+```
+
+这个模块用关键字 `export` 导出了 `x` 和 `y` 函数，此外还有一个没有被导出的函数 `p`。想要将该模块及其内部的函数导入当前模块有以下方法：
+
+| 导入代码                  | 当前作用域导入了哪些变量？                                                      | 可增加新方法的名字              |
+|:------------------------------- |:------------------------------------------------------------------------------- |:------------------------------------------- |
+| `using MyModule`                | All `export`ed names (`x` and `y`), `MyModule.x`, `MyModule.y` and `MyModule.p` | `MyModule.x`, `MyModule.y` and `MyModule.p` |
+| `using MyModule: x, p`          | `x` and `p`                                                                     |                                             |
+| `import MyModule`               | `MyModule.x`、`MyModule.y` 和 `MyModule.p`                                     | `MyModule.x`、`MyModule.y` 和 `MyModule.p` |
+| `import MyModule.x, MyModule.p` | `x` 和 `p`                                                                     | `x` 和 `p`                                 |
+| `import MyModule: x, p`         | `x` 和 `p`                                                                     | `x` 和 `p`                                 |
+
+### 模块和文件
+
+模块与文件和文件名无关；模块只与模块表达式有关。一个模块可以有多个文件，一个文件也可以有多个模块。
+
+```julia
+module Foo
 
 include("file1.jl")
 include("file2.jl")
@@ -23,220 +80,31 @@ include("file2.jl")
 end
 ```
 
-文件和文件名大多与模块无关； 模块仅与模块表达式相关联。 每个模块可以有多个文件，每个文件可以有多个模块。 `include` 的行为就像在包含模块的全局作用域内执行源文件的内容一样。 在本章中，我们使用简短和简化的示例，因此我们不会使用`include`。
-
-我们推荐不要缩进模块的主体，因为这通常会导致整个文件被缩进。 此外，通常使用 `UpperCamelCase` 作为模块名称（就像类型一样），并在适用时使用复数形式，特别是如果模块包含类似命名的标识符，以避免名称冲突。 例如，
+在不同的模块中引入同一段代码，可以提供一种类似 mixin 的行为。我们可以利用这个特性来观察，在不同的定义下，执行同一段代码会有什么结果。例如，在测试的时候，可以使用某些「安全」的运算符。
 
 ```julia
-module FastThings
-
-struct FastThing
-    ...
+module Normal
+include("mycode.jl")
 end
 
-end
-```
-
-## [命名空间管理](@id namespace-management)
-
-命名空间管理是指语言提供的设施，用于使模块中的名称在其他模块中可用。 我们在下面详细讨论相关的概念和功能。
-
-### 合格的名称
-
-全局作用域内的函数、变量和类型的名称，如`sin`、`ARGS`和`UnitRange`始终属于一个模块，称为*母模块*，例如，可以与[`parentmodule`](@ref)交互来找到该模块
-
-```jldoctest
-julia> parentmodule(UnitRange)
-Base
-```
-
-也可以通过在它们的模块前面加上前缀来引用它们的父模块之外的这些名称，例如`Base.UnitRange`。 这称为*限定名称*。 父模块可以使用像`Base.Math.sin`这样的子模块链来访问，其中`Base.Math`被称为*模块路径*。 由于句法歧义，限定只包含符号的名称，例如运算符，需要插入冒号，例如 `Base.:+`。 少数运算符还需要括号，例如 `Base.:(==)`。
-
-如果一个名称是限定的，那么它总是*可访问的*，在函数的情况下，它也可以通过使用限定的名称作为函数名称来添加方法。
-
-在一个模块中，一个变量名可以通过将其声明 `global x` 不赋值而“保留”。 这可以防止在加载时间后初始化的全局变量的名称冲突。 语法`M.x = y` 不适用于在另一个模块中分配一个全局变量； 全局分配需要在模块本地进行操作。
-
-### 导出列表
-
-名称（指函数、类型、全局变量和常量）可以通过 `export` 添加到模块的 *导出列表 *。 通常，它们位于或靠近模块定义的顶部，以便源代码的读者可以轻松找到它们，如
-
-```julia
-module NiceStuff
-
-export nice, DOG
-
-struct Dog end      # singleton type, not exported
-
-const DOG = Dog()   # named instance, exported
-
-nice(x) = "nice $x" # function, exported
-
+module Testing
+include("safe_operators.jl")
+include("mycode.jl")
 end
 ```
 
-但这只是一个风格建议——一个模块可以在任意位置有多个 `export` 语句。
+### 标准模块
 
-导出构成 API（应用程序接口）一部分的名称是很常见的。 在上面的代码中，导出列表建议用户应该使用`nice`和`DOG`。 然而，由于限定名称总是使标识符可访问，这只是组织 API 的一个选项：与其他语言不同，Julia 没有真正隐藏模块内部的功能。
-
-此外，某些模块根本不导出名称。 这通常是因为他们的 API 中使用常用词（例如`derivative`），这很容易与其他模块的导出列表发生冲突。 我们将在下面看到如何管理名称冲突。
-
-### 单独使用`using`和`import`
-
-加载模块最常见的方式可能是`using ModuleName`。 这 [加载](@ref code-loading) 与 `ModuleName` 关联的代码，并引入
-
-1. 模块名称
-
-2. 和导出列表的元素到周围的全局命名空间中。
-
-严格来说，声明 `using ModuleName` 意味着一个名为 `ModuleName` 的模块可用于根据需要解析名称。 当遇到当前模块中没有定义的全局变量时，系统会在`ModuleName`导出的变量中查找，找到就使用。 这意味着当前模块中该全局变量的所有使用都将解析为`ModuleName`中该变量的定义。
-
-继续我们的例子，
-
-```julia
-using NiceStuff
-```
-
-将加载上面的代码，使 `NiceStuff`（模块名称）、`DOG` 和 `nice` 可用。 `Dog` 不在导出列表中，但如果名称被模块路径（这里只是模块名称）限定为 `NiceStuff.Dog`，则可以访问它。
-
-重要的是，**导出列表只在`using ModuleName` 的形式下起作用**。
-
-相反，
-
-```julia
-import NiceStuff
-```
-
-*仅*将模块名称带入作用域。 用户需要使用 `NiceStuff.DOG`、`NiceStuff.Dog` 和 `NiceStuff.nice` 来访问其内容。 通常，当用户想要保持命名空间干净时，在上下文中使用 `import ModuleName`。 正如我们将在下一节中看到的，`import NiceStuff` 等同于 `using NiceStuff: NiceStuff`。
-
-你可以用逗号分隔符来组合相同类型的多个`using`和`import`语句，例如：
-
-```julia
-using LinearAlgebra, Statistics
-```
-
-### 具有特定标识符的`using` 和 `import` ，并添加方法
-
-当 `using ModuleName:` 或 `import ModuleName:` 后跟以逗号分隔的名称列表时，模块会被加载，但 *只有那些特定的名称才会被语句带入命名空间*。 例如，
-
-```julia
-using NiceStuff: nice, DOG
-```
-
-将导入名称`nice`和`DOG`。
-
-重要的是，模块名称`NiceStuff` *不会*出现在命名空间中。 如果要使其可访问，则必须明确列出它，如
-```julia
-using NiceStuff: nice, DOG, NiceStuff
-```
-
-Julia有两种形式来表示似乎相同的内容，因为只有 `import ModuleName:f` 允许在 *没有模块路径*的情况下向 `f` 添加方法。也就是说，以下示例将给出一个错误：
-
-```julia
-using NiceStuff: nice
-struct Cat end
-nice(::Cat) = "nice 😸"
-```
-
-此错误可防止意外将方法添加到你仅打算使用的其他模块中的函数。
-
-有两种方法可以解决这个问题。 你始终可以使用模块路径限定函数名称：
-```julia
-using NiceStuff
-struct Cat end
-NiceStuff.nice(::Cat) = "nice 😸"
-```
-
-或者，你可以`import`特定的函数名称：
-```julia
-import NiceStuff: nice
-struct Cat end
-nice(::Cat) = "nice 😸"
-```
-
-你选择哪一个取决于你的代码风格。第一种形式表明你正在向另一个模块中的函数添加一个方法（请记住，导入和方法定义可能在单独的文件中），而第二种形式较短，如果你定义了多个方法，这一点尤其方便。
-
-一旦一个变量通过 `using` 或 `import` 引入，当前模块就不能创建同名的变量了。而且导入的变量是只读的，给全局变量赋值只能影响到由当前模块拥有的变量，否则会报错。
-
-### 用`as`来重命名
-
-由`import` 或`using` 引入作用域的标识符可以用关键字`as` 重命名。 这对于解决名称冲突以及缩短名称很有用。 例如，`Base` 导出函数名`read`，但CSV.jl 包也提供了`CSV.read`。 如果我们要多次调用 CSV 读取，删除 `CSV.` 限定符会很方便。 但是，我们指的是`Base.read`还是`CSV.read`是模棱两可的：
-
-```julia
-julia> read;
-
-julia> import CSV: read
-WARNING: ignoring conflicting import of CSV.read into Main
-```
-
-重命名提供了一个解决方案：
-
-```julia
-julia> import CSV: read as rd
-```
-
-导入的包本身也可以重命名：
-
-```julia
-import BenchmarkTools as BT
-```
-
-`as` 仅在将单个标识符引入作用域时才与 `using` 一起使用。 例如，`using CSV: read as rd` 有效，但`using CSV as C` 无效，因为它对 `CSV` 中的所有导出名称进行操作。
-
-### 混合使用多个 `using` 和 `import` 语句
-
-当使用上述任何形式的多个 `using` 或 `import` 语句时，它们的效果将按照它们出现的顺序组合。 例如，
-
-```julia
-using NiceStuff         # exported names and the module name
-import NiceStuff: nice  # allows adding methods to unqualified functions
-```
-
-会将 `NiceStuff` 的所有导出名称和模块名称本身带入作用域，并且还允许向 `nice` 添加方法而不用模块名称作为前缀。
-
-### 处理名称冲突
-
-考虑两个（或更多）包导出相同名称的情况，如
-
-```julia
-module A
-export f
-f() = 1
-end
-
-module B
-export f
-f() = 2
-end
-```
-
-`using A, B` 语句有效，但是当你尝试调用 `f` 时，你会收到警告
-
-```julia
-WARNING: both B and A export "f"; uses of it in module Main must be qualified
-ERROR: LoadError: UndefVarError: f not defined
-```
-
-在这里，Julia 无法确定您指的是哪个 `f`，因此你必须做出选择。 常用的解决方法有以下几种：
-
-1. 只需继续使用限定名称，如`A.f` 和`B.f`。 这使代码的读者可以清楚地了解上下文，特别是如果 `f` 恰好重合但在不同的包中具有不同的含义。 例如，`degree`在数学、自然科学和日常生活中有多种用途，这些含义应该分开。
-
-2. 使用上面的 `as` 关键字重命名一个或两个标识符，例如
-
-   ```julia
-   using A: f as f
-   using B: f as g
-   ```
-
-   会使`B.f` 可用作`g`。 在这里，我们假设您之前没有使用 `using A`，
-   这会把`f`代入命名空间。
-
-3. 当问题中的多个名称*确实*有相同的含义时，通常一个模块会从另一个模块导入它，或者有一个轻量级的“基础”包，它的唯一功能是定义这样的接口，可以被其他包使用。按照惯例，这些包名以 `...Base` 结尾（这与 Julia 的 `Base` 模块无关）
+有三个重要的标准模块：
+* [`Core`](@ref) 包含了语言“内置”的所有功能。
+* [`Base`](@ref) 包含了绝大多数情况下都会用到的基本功能。
+* [`Main`](@ref) 是顶层模块，当 julia 启动时，也是当前模块。
 
 ### 默认顶层定义以及裸模块
 
-模块自动包含 `using Core`、`using Base` 以及 [`eval`](@ref) 和 [`include`](@ref) 函数的定义，这些函数在该模块的全局作用域内计算表达式/文件 .
+除了默认包含 `using Base` 之外，所有模块都还包含 [`eval`](@ref) 和 [`include`](@ref) 函数。这两个函数用于在对应模块的全局环境中，执行表达式或文件。
 
-如果不需要这些默认定义，可以使用关键字 [`baremodule`](@ref) 来定义模块（注意：`Core` 仍然是导入的）。 就 `baremodule` 而言，一个标准的 `module` 看起来像这样：
+如果连这些默认的定义都不需要，那么可以用 [`baremodule`](@ref) 定义裸模块（不过 `Core` 模块仍然会被引入，否则啥也干不了）。用裸模块表达的标准模块定义如下：
 
 ```
 baremodule Mod
@@ -251,91 +119,38 @@ include(p) = Base.include(Mod, p)
 end
 ```
 
-### 标准模块
+### 模块的绝对路径和相对路径
 
-有三个重要的标准模块：
-* [`Core`](@ref) 包含了语言“内置”的所有功能。
-* [`Base`](@ref) 包含了绝大多数情况下都会用到的基本功能。
-* [`Main`](@ref) 是顶层模块，当 julia 启动时，也是当前模块。
+给定语句 `using Foo`，系统在顶层模块的内部表中查找名为 `Foo` 的包。如果模块不存在，系统会尝试 `require(:Foo)`，这通常会从已安装的包中加载代码。
 
-!!! note "Standard library modules"
-    默认情况下，Julia 附带了一些标准库模块。 除了你不需要显式安装它们之外，它们的行为与常规 Julia 包类似。 例如，如果您想执行一些单元测试，你可以按如下方式加载 `Test` 标准库：
-    ```julia
-    using Test
-    ```
+但是，某些模块包含子模块，这意味着你有时需要访问非顶层模块。有两种方法可以做到这一点。第一种是使用绝对路径，例如 `using Base.Sort`。第二种是使用相对路径，这样可以更容易地导入当前模块或其任何封闭模块的子模块：
 
-## 子模块和相对路径
+```
+module Parent
 
-模块可以包含 *子模块*，嵌套相同的语法`module ... end`。 它们可用于引入单独的命名空间，这有助于组织复杂的代码库。 请注意，每个 `module` 都引入了自己的 [作用域](@ref scope-of-variables)，因此子模块不会自动从其父模块“继承”名称。
-
-建议子模块在 `using` 和 `import` 语句中使用 *相对模块限定符* 来引用封闭父模块中的其他模块（包括后者）。 相对模块限定符以句点 (`.`) 开头，它对应于当前模块，每个连续的 `.` 都指向当前模块的父级。 如有必要，这应该跟在模块之后，最后是要访问的实际名称，所有名称都以`.`分隔。
-
-考虑以下示例，其中子模块`SubA`定义了一个函数，然后在其“兄弟”模块中进行扩展：
-
-```julia
-module ParentModule
-
-module SubA
-export add_D  # exported interface
-const D = 3
-add_D(x) = x + D
+module Utils
+...
 end
 
-using .SubA  # brings `add_D` into the namespace
+using .Utils
 
-export add_D # export it from ParentModule too
-
-module SubB
-import ..SubA: add_D # relative path for a “sibling” module
-struct Infinity end
-add_D(x::Infinity) = x
-end
-
+...
 end
 ```
 
-你可能会在包中看到代码，在类似的情况下，它使用
-```julia
-import ParentModule.SubA: add_D
-```
-然而，这是通过 [代码加载](@ref code-loading) 操作的，因此仅当 `ParentModule` 在包中时才有效。 最好使用相对路径。
+这里的模块 `Parent` 包含一个子模块 `Utils`，而 `Parent` 中的代码希望 `Utils` 的内容可见，这是可以使用 `using` 加点 `.` 这种相对路径来实现。添加更多的点会移动到模块层次结构中的更上级别。例如，`using ..Utils` 会在 `Parent` 的上级模块中查找 `Utils` 而不是在 `Parent` 中查找。
 
-请注意，如果你正在评估值，定义的顺序也很重要。 考虑
+请注意，相对导入符号 `.` 仅在 `using` 和 `import` 语句中有效。
 
-```julia
-module TestPackage
+### 命名空间的相关话题
 
-export x, y
+如果名称是限定的（例如 `Base.sin`），那么即使它没有被导出，我们也可以访问它。这通常在调试时很有用。若函数名也使用这种限定的方式，就可以为其添加方法。但是，对于函数名仅包含符号的情况，例如一个运算符，`Base.+`，由于会出现语法歧义，所以必须使用 `Base.:+` 来引用它。如果运算符的字符不止一个，则必须用括号括起来，例如：`Base.:(==)`。
 
-x = 0
+宏名称在导入和导出语句中用 `@` 编写，例如：`import Mod.@mac`。其它模块中的宏可以用 `Mod.@mac` 或 `@Mod.mac` 触发。
 
-module Sub
-using ..TestPackage
-z = y # ERROR: UndefVarError: y not defined
-end
+不允许使用 `M.x = y` 这种写法给另一个模块中的全局变量赋值；必须在模块内部才能进行全局变量的赋值。
 
-y = 1
-
-end
-```
-
-其中 `Sub` 在定义之前尝试使用 `TestPackage.y`，因此它没有值。
-
-出于类似的原因，你不能使用循环顺序：
-
-```julia
-module A
-
-module B
-using ..C # ERROR: UndefVarError: C not defined
-end
-
-module C
-using ..B
-end
-
-end
-```
+用 `global x` 声明变量可以仅“保留”名称而不赋值。有些全局变量需要在代码加载后才初始化，这样做可以防止命名冲突。
 
 ### 模块初始化和预编译
 
@@ -346,9 +161,9 @@ end
 之后，当该模块的任何一个依赖发生变更时，该模块会在 `using` 或 `import` 时自动重新编译；
 模块的依赖指的是：任何它导入的模块、Julia 自身、include 的文件或由 [`include_dependency(path)`](@ref) 显式声明的依赖。
 
-对于文件依赖项，通过检查由 `include` 加载或由 `include_dependency` 显式添加的每个文件的修改时间（`mtime`）是否保持不变，或是否等于截断到最接近秒的修改时间（以适应无法以亚秒精度复制 mtime的系统），来确定更改。它还考虑由 `require` 中的搜索逻辑选择的文件路径是否与创建预编译文件的路径匹配。它还考虑了已加载到当前进程中的依赖项集，并且不会重新编译这些模块，即使它们的文件更改或消失，以避免在正在运行的系统和预编译缓存之间创建不兼容。
+对于文件依赖，判断是否有变动的方法是：在 `include` 或 `include_dependency` 的时候检查每个文件的变更时间（`mtime`）是否没变，或等于截断变更时间。截断变更时间是指将变更时间截断到最近的一秒，这是由于在某些操作系统中，用 `mtime` 无法获取亚秒级的精度。此外，也会考虑到 `require` 搜索到的文件路径与之前预编译文件中的是否匹配。对于已经加载到当前进程的依赖，即使它们的文件发成了变更，甚至是丢失，Julia 也不会重新编译这些模块，这是为了避免正在运行的系统与预编译缓存之间的不兼容性。
 
-如果你知道一个模块预编译*不*安全（例如，由于下面描述的原因之一），你应该把`__precompile__(false)`放在模块文件中（通常放在顶部）。 这会导致`Base.compilecache` 抛出错误，并且会导致`using` / `import` 将其直接加载到当前进程中并跳过预编译和缓存。 这也因此防止了模块被任何其他预编译模块导入。
+如果你认为预编译自己的模块是**不**安全的（基于下面所说的各种原因），那么你应该在模块文件中添加 `__precompile__(false)`，一般会将其写在文件的最上面。这就可以触发 `Base.compilecache` 报错，并且在直接使用 `using` / `import` 加载的时候跳过预编译和缓存。这样做同时也可以防止其它开启预编译的模块加载此模块。
 
 在开发模块的时候，你可能需要了解一些与增量编译相关的固有行为。例如，外部状态不会被保留。为了解决这个问题，需要显式分离运行时与编译期的部分。Julia 允许你定义一个 `__init__()` 函数来执行任何需要在运行时发生的初始化。在编译期（`--output-*`），此函数将不会被调用。你可以假设在代码的生存周期中，此函数只会被运行一次。当然，如果有必要，你也可以手动调用它，但在默认的情况下，请假定此函数是为了处理与本机状态相关的信息，注意这些信息不需要，更不应该存入预编译镜像。此函数会在模块被导入到当前进程之后被调用，这包括在一个增量编译中导入该模块的时候（`--output-incremental=yes`），但在完整编译时该函数不会被调用。
 
@@ -367,7 +182,9 @@ end
 
 注意，在像 `__init__` 这样的函数里定义一个全局变量是完全可以的，这是动态语言的优点之一。但是把全局作用域的值定义成常量，可以让编译器能确定该值的类型，并且能让编译器生成更好的优化过的代码。显然，你的模块（Module）中，任何其他依赖于 `foo_data_ptr` 的全局量也必须在 `__init__` 中被初始化。
 
-涉及大多数不是由 [`ccall`](@ref) 生成的 Julia 对象的常量不需要放在 `__init__` 中：它们的定义可以从缓存的模块映像中预编译和加载。 这包括复杂的堆分配对象，如数组。 但是，任何返回原始指针值的例程都必须在运行时调用才能使预编译工作（[`Ptr`](@ref) 对象将变成空指针，除非它们隐藏在 [`isbits`](@ref) 目的）。 这包括 Julia 函数 [`@cfunction`](@ref) 和 [`pointer`](@ref) 的返回值。
+涉及大多数不是由 [`ccall`](@ref) 生成的 Julia 对象的常量，不需要放在 `__init__` 中：它们的定义可以预编译并从缓存的模块映像中加载。这包括复杂的堆分配对象，如数组。
+但是，任何返回原始指针值的例程都必须在运行时调用，以便进行预编译（除非将 [`Ptr`](@ref) 对象隐藏在 [`isbits`](@ref) 对象中，否则它们将转换为空指针）。
+这包括 Julia 函数 `cfunction` 和 [`pointer`](@ref) 的返回值。
 
 字典和集合类型，或者通常任何依赖于 `hash(key)` 方法的类型，都是比较棘手的情况。
 通常当键是数字、字符串、符号、范围、`Expr` 或这些类型的组合（通过数组、元组、集合、映射对等）时，可以安全地预编译它们。但是，对于一些其它的键类型，例如 `Function` 或 `DataType`、以及还没有定义散列方法的通用用户定义类型，回退（fallback）的散列（`hash`）方法依赖于对象的内存地址（通过 `objectid`），因此可能会在每次运行时发生变化。

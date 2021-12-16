@@ -102,7 +102,9 @@ julia> print(stdout, 0x61)
 
 ## 使用文件
 
-和其他环境一样，Julia 有 [`open`](@ref) 函数，它接收文件名并返回一个 [`IOStream`](@ref) 对象，你可以用该对象来对文件进行读取和写入。例如，如果我们有文件 `hello.txt`，其内容为 `Hello, World!`：
+Like many other environments, Julia has an [`open`](@ref) function, which takes a filename and
+returns an [`IOStream`](@ref) object that you can use to read and write things from the file. For example,
+if we have a file, `hello.txt`, whose contents are `Hello, World!`:
 
 ```julia-repl
 julia> f = open("hello.txt")
@@ -164,13 +166,13 @@ julia> open("hello.txt") do f
 ```julia-repl
 julia> using Sockets
 
-julia> errormonitor(@async begin
+julia> @async begin
            server = listen(2000)
            while true
                sock = accept(server)
                println("Hello World\n")
            end
-       end)
+       end
 Task (runnable) @0x00007fd31dc11ae0
 ```
 
@@ -199,7 +201,18 @@ julia> listen("\\\\.\\pipe\\testsocket") # 监听 Windows 命名管道
 Sockets.PipeServer(active)
 ```
 
-请注意，最后一次调用返回的类型是不同的。这是因为此服务器不监听 TCP，而是监听命名管道（Windows）或 UNIX 域套接字。还请注意 Windows 命名管道格式必须具有特定的模式，即名称前缀（`\\.\pipe\`），以便唯一标识[文件类型](https://docs.microsoft.com/windows/desktop/ipc/pipe-names)。TCP 和命名管道或 UNIX 域套接字之间的区别是微妙的，这与 [`accept`](@ref) 和 [`connect`](@ref) 方法有关。[`accept`](@ref) 方法检索到连接到我们刚创建的服务器的客户端的连接，而 [`connect`](@ref) 函数使用指定的方法连接到服务器。[`connect`](@ref) 函数接收与 [`listen`](@ref) 相同的参数，因此，假设环境（即 host、cwd 等）相同，你应该能够将相同的参数传递给 [`connect`](@ref)，就像你在监听建立连接时所做的那样。那么让我们尝试一下（在创建上面的服务器之后）：
+Note that the return type of the last invocation is different. This is because this server does not
+listen on TCP, but rather on a named pipe (Windows) or UNIX domain socket. Also note that Windows
+named pipe format has to be a specific pattern such that the name prefix (`\\.\pipe\`) uniquely
+identifies the [file type](https://docs.microsoft.com/windows/desktop/ipc/pipe-names).
+The difference between TCP and named pipes or
+UNIX domain sockets is subtle and has to do with the [`accept`](@ref) and [`connect`](@ref)
+methods. The [`accept`](@ref) method retrieves a connection to the client that is connecting on
+the server we just created, while the [`connect`](@ref) function connects to a server using the
+specified method. The [`connect`](@ref) function takes the same arguments as [`listen`](@ref),
+so, assuming the environment (i.e. host, cwd, etc.) is the same you should be able to pass the same
+arguments to [`connect`](@ref) as you did to listen to establish the connection. So let's try that
+out (after having created the server above):
 
 ```julia-repl
 julia> connect(2000)
@@ -213,7 +226,7 @@ julia> Hello World
 Julia 的强大优势在于，即使 I/O 实际上是异步发生的，API 也以同步方式暴露，我们不必担心回调，甚至不必确保服务器能够运行。在我们调用 [`connect`](@ref) 时，当前任务等待建立连接，并在这之后才继续执行。在此暂停中，服务器任务恢复执行（因为现在有一个连接请求是可用的），接受该连接，打印信息并等待下一个客户端。读取和写入以同样的方式运行。为了理解这一点，请考虑以下简单的 echo 服务器：
 
 ```julia-repl
-julia> errormonitor(@async begin
+julia> @async begin
            server = listen(2001)
            while true
                sock = accept(server)
@@ -221,15 +234,15 @@ julia> errormonitor(@async begin
                    write(sock, readline(sock, keep=true))
                end
            end
-       end)
+       end
 Task (runnable) @0x00007fd31dc12e60
 
 julia> clientside = connect(2001)
 TCPSocket(RawFD(28) open, 0 bytes waiting)
 
-julia> errormonitor(@async while isopen(clientside)
+julia> @async while isopen(clientside)
            write(stdout, readline(clientside, keep=true))
-       end)
+       end
 Task (runnable) @0x00007fd31dc11870
 
 julia> println(clientside,"Hello World from the Echo Server")
@@ -256,39 +269,4 @@ TCPSocket(RawFD(30) open, 0 bytes waiting)
 ```julia-repl
 julia> getaddrinfo("google.com")
 ip"74.125.226.225"
-```
-
-## 异步 I/O
-
-
-[`Base.read`](@ref) 和 [`Base.write`](@ref) 的所有 I/O 操作都可以通过使用 [coroutines](@ref man-tasks) 异步执行。 你可以使用 [`@async`](@ref) 宏创建一个新的协程来读取或写入流：
-
-```julia-repl
-julia> task = @async open("foo.txt", "w") do io
-           write(io, "Hello, World!")
-       end;
-
-julia> wait(task)
-
-julia> readlines("foo.txt")
-1-element Array{String,1}:
- "Hello, World!"
-```
-
-通常会遇到您想要同时执行多个异步操作并等待它们全部完成的情况。你可以使用[`@ sync`](@ ref)宏，这会阻塞你的程序直到它所包裹的所有协程运行完毕。
-
-```julia-repl
-julia> using Sockets
-
-julia> @sync for hostname in ("google.com", "github.com", "julialang.org")
-           @async begin
-               conn = connect(hostname, 80)
-               write(conn, "GET / HTTP/1.1\r\nHost:$(hostname)\r\n\r\n")
-               readline(conn, keep=true)
-               println("Finished connection to $(hostname)")
-           end
-       end
-Finished connection to google.com
-Finished connection to julialang.org
-Finished connection to github.com
 ```

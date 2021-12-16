@@ -1,6 +1,6 @@
-# 本机代码生成过程的高级概述
+# High-level Overview of the Native-Code Generation Process
 
-## 指针的表示
+## Representation of Pointers
 
 When emitting code to an object file, pointers will be emitted as relocations.
 The deserialization code will ensure any object that pointed to one of these constants

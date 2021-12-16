@@ -1,7 +1,6 @@
-# [文档](@id man-documentation)
+# 文档
 
-Julia允许开发者和用户，使用其内置的文档系统更加便捷地为函数、类型以及其他对象编写文档。
- 
+自Julia 0.4 开始，Julia 允许开发者和用户，使用其内置的文档系统更加便捷地为函数、类型以及其他对象编写文档。
 
 基础语法很简单：紧接在对象（函数，宏，类型和实例）之前的字符串都会被认为是对应对象的文档（称作 *docstrings*）。
 注意不要在 docstring 和文档对象之间有空行或者注释。
@@ -26,9 +25,8 @@ foo(xs::Array) = ...
 """
     bar(x[, y])
 
-Compute the Bar index between `x` and `y`.
-
-If `y` is unspecified, compute the Bar index between all pairs of columns of `x`.
+Compute the Bar index between `x` and `y`. If `y` is missing, compute
+the Bar index between all pairs of columns of `x`.
 
 # Examples
 ```julia-repl
@@ -91,11 +89,11 @@ function bar(x, y) ...
     
 
    ```
-   See also [`bar!`](@ref), [`baz`](@ref), [`baaz`](@ref).
+   See also: [`bar!`](@ref), [`baz`](@ref), [`baaz`](@ref)
    ```
 6. 请在 `# Examples` 中包含一些代码例子。
 
-   例子应尽可能按照 *doctest* 来写。*doctest* 是一个栅栏分隔开的代码块（请参阅[代码块](@ref Code-blocks)），其以 ````` ```jldoctest````` 开头并包含任意数量的提示符 `julia>` 以及用来模拟 Julia REPL 的输入和预期输出。
+   例子应尽可能按照 *doctest* 来写。*doctest* 是一个栅栏分隔开的代码块（请参阅[代码块](@ref)），其以 ````` ```jldoctest````` 开头并包含任意数量的提示符 `julia>` 以及用来模拟 Julia REPL 的输入和预期输出。
     
     
 
@@ -123,7 +121,8 @@ function bar(x, y) ...
        Calling `rand` and other RNG-related functions should be avoided in doctests since they will not
        produce consistent outputs during different Julia sessions. If you would like to show some random
        number generation related functionality, one option is to explicitly construct and seed your own
-       RNG object (see [`Random`](@ref Random-Numbers)) and pass it to the functions you are doctesting.
+       [`MersenneTwister`](@ref) (or other pseudorandom number generator) and pass it to the functions you are
+       doctesting.
 
        Operating system word size ([`Int32`](@ref) or [`Int64`](@ref)) as well as path separator differences
        (`/` or `\`) will also affect the reproducibility of some doctests.
@@ -319,16 +318,16 @@ end
 
 ```julia
 struct MyType
-    value::Int
+    value::String
 end
 
 Docs.getdoc(t::MyType) = "Documentation for MyType with value $(t.value)"
 
-x = MyType(1)
-y = MyType(2)
+x = MyType("x")
+y = MyType("y")
 ```
 
-`?x` 将显示“Documentation for MyType with value 1”，而`?y` 将显示“Documentation for MyType with value 2”。
+输入`?x`会显示"Documentation for MyType with value x"，输入`?y`则会显示"Documentation for MyType with value y"。
 
 ## 语法指南
 
@@ -464,7 +463,7 @@ f(x) = x
 end
 ```
 
-通过在表达式上方放置一个 docstring 来记录 `baremodule` 会自动将 `@doc` 导入到模块中。 当没有记录模块表达式时，必须手动完成这些导入。
+通过把 docstring 放在表达式之上来给一个 `baremodule` 写文档会在模块中自动引入 `@doc`。它在模块表达式并没有文档时必须手动引入。空的 `baremodule` 不能有文档。
 
 ### 全局变量
 

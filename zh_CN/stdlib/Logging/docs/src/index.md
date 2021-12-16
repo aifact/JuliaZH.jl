@@ -1,6 +1,8 @@
 # 日志记录
 
-[`Logging`](@ref Logging.Logging) 模块提供了一个将历史和计算进度记录为事件的日志。事件通过在源代码里插入日志语句产生，例如：
+The [`Logging`](@ref Logging.Logging) module provides a way to record the history and progress of a
+computation as a log of events.  Events are created by inserting a logging
+statement into the source code, for example:
 
 ```julia
 @warn "Abandon printf debugging, all ye who enter here!"
@@ -33,10 +35,10 @@ A = ones(Int, 4, 4)
 v = ones(100)
 @info "Some variables"  A  s=sum(v)
 
-# output
+# 输出：
 ┌ Info: Some variables
 │   A =
-│    4×4 Matrix{Int64}:
+│    4×4 Array{Int64,2}:
 │     1  1  1  1
 │     1  1  1  1
 │     1  1  1  1
@@ -44,8 +46,9 @@ v = ones(100)
 └   s = 100.0
 ```
 
-所有的日志宏如 `@debug`, `@info`, `@warn` 和 `@error` 有着共同的特征，
-这些共同特征在更通用的宏 [`@logmsg`](@ref) 的文档里有细致说明。
+All of the logging macros `@debug`, `@info`, `@warn` and `@error` share common
+features that are described in detail in the documentation for the more
+general macro [`@logmsg`](@ref).
 
 ## 日志事件结构
 
@@ -56,16 +59,16 @@ automatically extracted. Let's examine the user-defined data first:
   filtering. There are several standard levels of type [`LogLevel`](@ref);
   user-defined levels are also possible.
   Each is distinct in purpose:
-  - [`Logging.Debug`](@ref) (log level -1000) is information intended for the developer of
-    the program. These events are disabled by default.
-  - [`Logging.Info`](@ref) (log level 0) is for general information to the user.
-    Think of it as an alternative to using `println` directly.
-  - [`Logging.Warn`](@ref) (log level 1000) means something is wrong and action is likely
-    required but that for now the program is still working.
-  - [`Logging.Error`](@ref) (log level 2000) means something is wrong and it is unlikely to
-    be recovered, at least by this part of the code.
-    Often this log-level is unneeded as throwing an exception can convey
-    all the required information.
+  - `Debug` is information intended for the developer of the program.
+  These events are disabled by default.
+  - `Info` is for general information to the user.
+  Think of it as an alternative to using `println` directly.
+  - `Warn` means something is wrong and action is likely required
+  but that for now the program is still working.
+  - `Error` means something is wrong and it is unlikely to be recovered,
+  at least by this part of the code.
+  Often this log-level is unneeded as throwing an exception can convey
+  all the required information.
 
 * The *message*  is an object describing the event. By convention
   `AbstractString`s passed as messages are assumed to be in markdown format.
@@ -214,9 +217,7 @@ julia> foo()
 
 ```
 
-## Examples
-
-### Example: Writing log events to a file
+## Writing log events to a file
 
 Sometimes it can be useful to write log events to a file. Here is an example
 of how to use a task-local and global logger to write information to a text
@@ -253,25 +254,6 @@ julia> @info("a global log message")
 julia> close(io)
 ```
 
-### Example: Enable debug-level messages
-
-Here is an example of creating a [`ConsoleLogger`](@ref) that lets through any messages
-with log level higher than, or equal, to [`Logging.Debug`](@ref).
-
-```julia-repl
-julia> using Logging
-
-# Create a ConsoleLogger that prints any log messages with level >= Debug to stderr
-julia> debuglogger = ConsoleLogger(stderr, Logging.Debug)
-
-# Enable debuglogger for a task
-julia> with_logger(debuglogger) do
-           @debug "a context specific log message"
-       end
-
-# Set the global logger
-julia> global_logger(debuglogger)
-```
 
 ## Reference
 
@@ -285,10 +267,6 @@ Logging.Logging
 ```@docs
 Logging.@logmsg
 Logging.LogLevel
-Logging.Debug
-Logging.Info
-Logging.Warn
-Logging.Error
 ```
 
 ### [Processing events with AbstractLogger](@id AbstractLogger-interface)
