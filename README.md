@@ -1,8 +1,20 @@
-# JuliaZH.jl
+# JuliaZH.jl-Jupyter版本
+
 
 |     |国内镜像 | Stable | Latest | Preview |
 |:---:|:---:|:---:|:---:|:---:|
-| 文档 | [![][docs-mirror-img]][docs-mirror-url] | [![][docs-stable-img]][docs-stable-url] | [![][docs-latest-img]][docs-latest-url] | [![][docs-preview-img]][docs-preview-url] |
+| 中文官方文档 | [![][docs-mirror-img]][docs-mirror-url] | [![][docs-stable-img]][docs-stable-url] | [![][docs-latest-img]][docs-latest-url] | [![][docs-preview-img]][docs-preview-url] |
+|     |       |         |        |      |
+|     |在线jupyter | Stable | Latest | Preview |
+|JuliaZH.jl-Jupyter 版本|  [![][Binder-img]][Binder-url]  |   |   |    |
+
+##jupyter版本创建步骤
+fork 中文文档官方库
+创建learn分支
+使用https://github.com/aaren/notedown，及./transferMDtoJupyter.bat 在windows系统中，将md转换为.ipynb
+使用https://mybinder.org/， https://deepnote.com,  https://cocalc.com/ https://colab.research.google.com/ 进行部署（参考https://www.jianshu.com/p/e009997ab5d8）
+@GoogleColab可以直接从@github打开任何@ProjectJupyter笔记本！
+要运行笔记本，只需在笔记本URL中将“ http://github.com ”替换为“ http://colab.research.google.com/github/ ”，它将被加载到Colab中。
 
 ## 安装
 
@@ -63,3 +75,5 @@ search: JuliaZH
 [docs-latest-url]: https://juliacn.github.io/JuliaZH.jl/latest
 [docs-preview-img]: https://img.shields.io/badge/Gitlab%20Pages-Preview-brightgreen.svg
 [docs-preview-url]: https://juliacn.gitlab.io/JuliaZH.jl
+[Binder-img]: https://mybinder.org/badge_logo.svg
+[Binder-url]: https://mybinder.org/v2/gh/aifact/JuliaZH.jl.git/learn
